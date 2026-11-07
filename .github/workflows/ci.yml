@@ -1,0 +1,46 @@
+name: Build HAO iOS IPA (unsigned)
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-13
+    steps:
+      - name: Checkout private source
+        uses: actions/checkout@v4
+        with:
+          repository: chwwls9946-max/nt-meihua-ios
+          ref: main
+          token: ${{ secrets.CI_PAT }}
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: iOS
+        run: xcodegen generate
+
+      - name: Build (unsigned)
+        working-directory: iOS
+        run: |
+          xcodebuild -project NTMeihua.xcodeproj \
+            -scheme NTMeihua \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+
+      - name: Package IPA
+        run: |
+          mkdir -p Payload
+          cp -r iOS/build/Release-iphoneos/NTMeihua.app Payload/
+          zip -r HAO-iOS-unsigned.ipa Payload
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HAO-iOS-unsigned-ipa
+          path: HAO-iOS-unsigned.ipa
